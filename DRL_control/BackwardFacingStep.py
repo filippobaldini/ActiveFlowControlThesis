@@ -69,9 +69,9 @@ class BackwardFacingStep(gym.Env):
         # Initialize the action and observation spaces
         self.num_control_terms = len(self.optimization_params["control_terms"])
         if self.geometry_params['set_freq']:
-            self.num_control_terms = self.num_control_terms - 1
-            self.low = self.optimization_params['min_value_jet_Q']
-            self.high = self.optimization_params["max_value_jet_Q"]
+            self.num_control_terms -= 1
+            self.low = np.array([self.optimization_params['min_value_jet_Q']], dtype=np.float32)
+            self.high = np.array([self.optimization_params["max_value_jet_Q"]], dtype=np.float32)
 
         print('Nb of control terms:',self.num_control_terms)
         self.action_space = spaces.Box(
@@ -180,7 +180,7 @@ class BackwardFacingStep(gym.Env):
         # No flux from jets for starting
         if self.geometry_params['set_freq']:
             self.Qs= np.zeros(1)
-            self.frequencies= np.zeros(1)
+            self.frequencies= np.ones(1)
         else:
             [self.Qs, self.frequencies] = np.zeros(len(self.optimization_params['control_terms']))
     
@@ -211,11 +211,12 @@ class BackwardFacingStep(gym.Env):
 
 
     def step(self, action):
-
-        print("Action from agent:", action)
-        print("Action shape:", action.shape)
-        print("Action type:", type(action))
         
+        if action.shape == ():
+            action = action.reshape((self.num_control_terms,))
+
+        print("Action :", action)
+
         if self.verbose > 1:
             print("--- call step ---")
 
@@ -248,8 +249,7 @@ class BackwardFacingStep(gym.Env):
             # self.output_data()
 
             # Increment solver step
-            self.solver_step += 1
-            crrt_action_nbr+=1
+            self.solver_step += self.number_steps_execution
 
             # Sample probes and recirculation area
             self.probes_values = self.ann_probes.sample(self.u_, self.p_).flatten()
@@ -264,10 +264,10 @@ class BackwardFacingStep(gym.Env):
         self.epoch_step += 1
 
         # Compute reward
-        reward = -self.recirc_area
+        reward = - self.compute_reward()
 
         # Check if the episode is done
-        done = self.episode_done()
+        self.done = self.episode_done()
 
         # Additional info
         info = {}
@@ -275,14 +275,18 @@ class BackwardFacingStep(gym.Env):
         if self.verbose > 1:
             print("--- done step ---")
 
-        return next_state, reward, done, info
+        return next_state, reward, self.done, info
 
     def episode_done(self):
-        done = self.epoch_step>=self.epoch_size
+        done = self.epoch_step>=self.epoch_size 
         return done
+    
+    def compute_reward(self):
+        return self.area_probe.sample(self.u_,self.p_)
        
     def reset(self,*,seed):
         self.start_class()
+        self.done = 0
         next_state = np.array(self.probes_values)
         self.episode_number += 1
         self.epoch_step = 0

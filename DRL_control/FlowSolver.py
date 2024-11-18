@@ -4,6 +4,7 @@ from control_bcs import JetBCValue
 from probes import PressureProbeValues,VelocityProbeValues,TotalrecirculationArea
 
 
+
 class FlowSolver(object):
     '''
     We here implement the fenics based CFD simulation used as episode template for learning and to 
@@ -13,6 +14,10 @@ class FlowSolver(object):
     def __init__(self, flow_params, geometry_params, solver_params):    
 
         self.T = 2.0
+
+        self.flow_params = flow_params
+        self.geometry_params = geometry_params
+        self.solver_params = solver_params
        
         # dynamic viscosity                                                                       	
         mu = Constant(flow_params['mu'])      
@@ -24,9 +29,6 @@ class FlowSolver(object):
         mesh = Mesh()
         f    = HDF5File(mesh.mpi_comm(), 'mesh/our_mesh.h5','r')
         f.read(mesh, 'mesh', False)
-
-        # plot(mesh)
-        # pyplot.show()
 
 
         # function that extracts the entities of dimension equal to the one of the 
@@ -228,9 +230,15 @@ class FlowSolver(object):
         '''
         Make one time step dt with the given values of jet boundary conditions
         '''
+
         # Update jet amplitude and frequency
         self.jet.Q = jet_bc_values[0]
-        self.jet.freq = jet_bc_values[1]
+        
+        if self.geometry_params['set_freq']:
+            self.jet.freq = 1.
+
+        else:
+            self.jet.freq = jet_bc_values[1]
 
         # Increments time
         self.gtime += self.dt(0) 

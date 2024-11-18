@@ -11,6 +11,10 @@ from torch.distributions.normal import Normal
 import tyro
 from typing import Callable
 import wandb
+import csv
+from datetime import datetime
+
+
 
 
 @dataclass
@@ -41,15 +45,15 @@ class Args:
     # Algorithm specific arguments
     env_id: str = "BackwardFacingStepv0"
     """the id of the environment"""
-    total_timesteps: int = 1000000
+    total_timesteps: int = 20000
     """total timesteps of the experiments"""
-    learning_rate: float = 1e-4
+    learning_rate: float = 3e-4
     """the learning rate of the optimizer"""
     num_envs: int = 1
     """the number of parallel game environments"""
     num_steps: int = 80#2048
     """the number of steps to run in each environment per policy rollout"""
-    anneal_lr: bool = True
+    anneal_lr: bool = False
     """Toggle learning rate annealing for policy and value networks"""
     gamma: float = 0.99
     """the discount factor gamma"""
@@ -57,7 +61,7 @@ class Args:
     """the lambda for the general advantage estimation"""
     num_minibatches: int = 32
     """the number of mini-batches"""
-    update_epochs: int = 50#10
+    update_epochs: int = 10#10
     """the K epochs to update the policy"""
     norm_adv: bool = True
     """Toggles advantages normalization"""
@@ -108,6 +112,13 @@ def make_env(env_id, idx, capture_video, run_name, gamma):
     return thunk
 
 
+def scale_action(action, env):
+    low = env.low          # Array of lower bounds for each action component
+    high = env.high        # Array of upper bounds for each action component
+    scaled_action = low + (0.5 * (action + 1.0) * (high - low))
+    return np.clip(scaled_action, low, high)
+
+
 def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
     torch.nn.init.orthogonal_(layer.weight, std)
     torch.nn.init.constant_(layer.bias, bias_const)
@@ -144,13 +155,6 @@ def evaluate(
 
     return episodic_returns
 
-def squeeze_scale_action(action, env):
-    action_env = action.squeeze(0).cpu().numpy()  # Shape: (action_dim,)
-    low = env.low          # Array of lower bounds for each action component
-    high = env.high        # Array of upper bounds for each action component
-    scaled_action = low + (0.5 * (action_env + 1.0) * (high - low))
-    return np.clip(scaled_action, low, high)
-
 class Agent(nn.Module):
     def __init__(self, envs):
         super().__init__()
@@ -170,20 +174,18 @@ class Agent(nn.Module):
             layer_init(nn.Linear(h_dim, np.prod(envs.action_space.shape)), std=0.01),
             #nn.Tanh()
         )
-        self.actor_logstd = nn.Parameter(torch.zeros(1, np.prod(envs.action_space.shape)))
+        self.actor_logstd = nn.Parameter(torch.zeros(np.prod(envs.action_space.shape)))
 
     def get_value(self, x):
         return self.critic(x)
 
     def get_action_and_value(self, x, action=None):
-        print("Input x shape:", x.shape)
         action_mean = self.actor_mean(x)
-        print("action_mean shape:", action_mean.shape)
         action_logstd = self.actor_logstd.expand_as(action_mean)
-        print("action_logstd shape:", action_logstd.shape)
         action_std = torch.exp(action_logstd)
         probs = Normal(action_mean, action_std)
         if action is None:
+            #action = torch.tanh(probs.sample())
             action = torch.clamp(probs.sample(), min=-1.0, max=1.0)
         return action, probs.log_prob(action).sum(-1), probs.entropy().sum(-1), self.critic(x)
 
@@ -255,7 +257,7 @@ solver_params = {'dt': dt,
 
 #initialization of the list containing the coordinates of the probes
 list_position_probes = []
-# we decided to collocate the probes in the more critical region for the recirculation area:
+# collocate the probes in the more critical region for the recirculation area:
 # that is the area below the step.
 # It would be likely a good possible improvement to place some probes also in the upper area
 positions_probes_for_grid_x = np.linspace(1,2,27)[1:-1]
@@ -291,9 +293,16 @@ inspection_params = {"plot": False,
 
 reward_function = 'recirculation_area'
 
-verbose = 3
+verbose = 5
 
 number_steps_execution = int((simulation_duration/dt)/nb_actuations)
+
+# Get the current date and time
+current_time = datetime.now()
+
+# Format the timestamp as a string
+timestamp = current_time.strftime("%Y%m%d_%H%M%S")
+
 
 
 
@@ -313,7 +322,10 @@ if __name__ == "__main__":
     args.batch_size = int(args.num_envs * args.num_steps)
     args.minibatch_size = int(args.batch_size // args.num_minibatches)
     args.num_iterations = args.total_timesteps // args.batch_size
-    run_name = f"{args.env_id}__{args.exp_name}__{args.seed}"
+    run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{timestamp}"
+
+    if geometry_params["set_freq"]:
+        run_name = f"{args.env_id}__{args.exp_name}__no_freq__{args.seed}__{timestamp}"
 
     seed = args.seed
 
@@ -338,6 +350,8 @@ if __name__ == "__main__":
     # envs = gym.vector.SyncVectorEnv(envs_list)
     # envs.eval = False
 
+    print("nb of cntrls terms:",envs.num_control_terms)
+
     # Set seeds
     envs.action_space.seed(seed)
     torch.manual_seed(seed)
@@ -347,6 +361,7 @@ if __name__ == "__main__":
 
     agent = Agent(envs).to(device)
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
+
     # ALGO Logic: Storage setup
     obs = torch.zeros((args.num_steps, args.num_envs) + envs.observation_space.shape).to(device)
     actions = torch.zeros((args.num_steps, args.num_envs) + envs.action_space.shape).to(device)
@@ -362,11 +377,27 @@ if __name__ == "__main__":
     next_obs = torch.Tensor(next_obs).to(device)
     next_done = torch.zeros(args.num_envs).to(device)
 
+    # Create the model directory (run directory)
+    model_dir = os.path.join('runs', run_name)
+    os.makedirs(model_dir, exist_ok=True)
+
+    # Initialize the CSV file in the run directory
+    csv_file_path = os.path.join(model_dir, 'episode_rewards.csv')
+    csv_file = open(csv_file_path, 'w', newline='')
+    writer = csv.writer(csv_file)
+    writer.writerow(['Episode', 'Reward'])
+
+
+
+    episode_reward = 0
+
+
     print("Starting reference experiment with zero control action")
     for step in range(0, args.num_steps):
-        episode_reward = 0
+       
         # ALGO LOGIC: action logic
         action = torch.zeros((envs.num_control_terms,))
+
         # TRY NOT TO MODIFY: execute the game and log data.
         # next_obs, terminations, reward, truncations, infos = envs.step(action.cpu().numpy())
         next_obs, reward, terminations, info = envs.step(action.cpu().numpy())
@@ -374,80 +405,57 @@ if __name__ == "__main__":
         print(terminations)
         next_done = terminations  # np.logical_or(terminations, truncations)
         rewards[step] = torch.tensor(reward).to(device).view(-1)
-        next_obs, next_done = torch.Tensor(next_obs).to(device), torch.tensor([terminations], dtype=torch.float32).to(device)
-        step += 1
+        next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor([next_done]).to(device)
+    
         episode_reward += reward
-        print('n_step:',envs.epoch_step)
         if next_done:
-            envs.reset(seed= args.seed)
             print("Episode is done!!!")
+            print("Episode Reward no control : ", episode_reward)
             if args.log:
                 wandb.log({'train/training_reward': episode_reward})
                 episode_reward = 0
 
+
+    writer.writerow(["0", episode_reward])
+
     print("Starting the real training of the ppo agent")
     for iteration in range(1, args.num_iterations + 1):
-        print("Iteration", iteration)
-        
-        # Resetting the environment
-        next_obs, _ = envs.reset(seed= args.seed)
-
-        # Adjust next_obs
+        next_obs, _ = envs.reset(seed=args.seed)
         next_obs = torch.Tensor(next_obs).to(device)
-        if next_obs.dim() == 1:
-            next_obs = next_obs.unsqueeze(0)
-        print("Adjusted next_obs shape:", next_obs.shape)
-
+        next_done = torch.zeros(args.num_envs).to(device)
+        print("Iteration:", iteration)
         # Annealing the rate if instructed to do so.
         if args.anneal_lr:
             frac = 1.0 - (iteration - 1.0) / args.num_iterations
             lrnow = frac * args.learning_rate
             optimizer.param_groups[0]["lr"] = lrnow
         episode_reward = 0
-        #starting the epoch
+
         for step in range(0, args.num_steps):
-            print("Step", step)
+            print("Step:", step)
             global_step += args.num_envs
-            print("Global Step", global_step)
+            print("Global Step:", global_step)
             obs[step] = next_obs
             dones[step] = next_done
 
             # ALGO LOGIC: action logic
             with torch.no_grad():
                 action, logprob, _, value = agent.get_action_and_value(next_obs)
-                print("Action", action)
                 values[step] = value.flatten()
             actions[step] = action
             logprobs[step] = logprob
-            
-            action_scaled = squeeze_scale_action(action,envs)
-            
-            
-            print("Action passed to env:", action_scaled)
-            print("Action passed to env shape:", action_scaled.shape)
+
+            action_np = action.cpu().numpy()
+            action_scaled = scale_action(action_np,envs)
 
             # TRY NOT TO MODIFY: execute the game and log data.
             #next_obs, terminations, reward, truncations, infos = envs.step(action.cpu().numpy())
             next_obs, reward, terminations, info = envs.step(action_scaled)
             print(reward)
             #print(terminations)
-            print("Raw next_obs shape:", np.array(next_obs).shape)
-            print("Raw reward:", reward)
-            print("Raw terminations:", terminations)
-
-            print("Raw next_obs shape:", np.array(next_obs).shape)
-
-            # Adjust next_obs
-            next_obs = torch.Tensor(next_obs).to(device)
-            if next_obs.dim() == 1:
-                next_obs = next_obs.unsqueeze(0)
-            print("Adjusted next_obs shape:", next_obs.shape)
-
-            # Adjust next_done
-            next_done = torch.tensor([terminations], dtype=torch.float32).to(device)
-
-            # Adjust rewards
-            rewards[step] = torch.tensor([reward], dtype=torch.float32).to(device).view(-1)
+            next_done = terminations #np.logical_or(terminations, truncations)
+            rewards[step] = torch.tensor(reward).to(device).view(-1)
+            next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor([next_done]).to(device)
 
             episode_reward += reward
             # if "final_info" in infos:
@@ -458,14 +466,18 @@ if __name__ == "__main__":
             #             writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
             if next_done:
                 print("Episode is done!!!")
-                print("Reward with zero control", episode_reward)
+                print("Episode Reward : ", episode_reward)
                 if args.log:
                     wandb.log({'train/training_reward': episode_reward,
-                              })
+                               'train/training_drag': episode_drag,
+                               'train/training_lift': episode_lift})
                     episode_reward = 0
                     episode_drag = 0
                     episode_lift = 0
         # bootstrap value if not done
+        
+        writer.writerow([iteration, episode_reward])
+
         with torch.no_grad():
             next_value = agent.get_value(next_obs).reshape(1, -1)
             advantages = torch.zeros_like(rewards).to(device)
@@ -567,12 +579,33 @@ if __name__ == "__main__":
                        'losses/clipfrac': np.mean(clipfracs),
                        'losses/explained_variance': explained_var,
                        'charts/learning_rate': optimizer.param_groups[0]["lr"]})
+            
+
+    end_time = time.time()
+    total_training_time = end_time - start_time
+    # Compute hours, minutes, and seconds
+    hours, rem = divmod(total_training_time, 3600)
+    minutes, seconds = divmod(rem, 60)
+    csv_file.close()
+
+    # Print the formatted time
+    print("Total training time: {:0>2}:{:0>2}:{:05.2f}".format(int(hours), int(minutes), seconds))
 
     if args.save_model:
-        model_path = f"runs/{run_name}/{args.exp_name}.cleanrl_model"
-        torch.save(agent.state_dict(), model_path)
-        print(f"model saved to {model_path}")
-        #from cleanrl_utils.evals.ppo_eval import evaluate
+
+        # Construct the full model path
+        model_path = os.path.join(model_dir, f"{args.exp_name}.cleanrl_model")
+
+        # Save the model
+        try:
+            torch.save(agent.state_dict(), model_path)
+            print(f"Model saved successfully at {model_path}")
+        except Exception as e:
+            print(f"Error saving model: {e}")
+        # model_path = f"runs/{run_name}/{args.exp_name}.cleanrl_model"
+        # torch.save(agent.state_dict(), model_path)
+        # print(f"model saved to {model_path}")
+        # #from cleanrl_utils.evals.ppo_eval import evaluate
 
         episodic_returns = evaluate(
             model_path,
@@ -584,10 +617,6 @@ if __name__ == "__main__":
             device=device,
             gamma=args.gamma,
         )
-
-        print('eval_reward',episodic_returns.mean())
-
-
         if args.log:
             wandb.log({'eval/eval_reward': episodic_returns.mean()})
 
