@@ -9,7 +9,7 @@ This repository contains the full implementation of a master’s thesis project 
 The project features two benchmark geometries:
 
 - **Backward-Facing Step (BFS)**
-- **Cylinder with Wall Jets**
+- **Flow Past a Cylinder**
 
 Each environment is modeled using the [FEniCS Project (2019.1.0)](https://fenicsproject.org/), and integrated with [Gymnasium](https://github.com/Farama-Foundation/Gymnasium).
 
