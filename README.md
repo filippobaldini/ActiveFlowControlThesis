@@ -42,7 +42,14 @@ Each can be trained and evaluated in both BFS and cylinder configurations.
  All the training and testing routines are launched through a unified entry point: `main.py`. This script dispatches the appropriate training or inspection script based on user-defined command-line arguments.
  <pre><code>python3 main.py --case {bfs|cylinder} --mode {train|test} --algo {ppo|td3} --control {amplitude|ampfreq|2jets|3jets [--submode {default|mu}] [--run-name "run_name"]</code></pre>
   
- Arguments: --case Geometry to simulate: bfs (Backward-Facing Step) or cylinder --mode Whether to train a new model or test an existing one --algo Reinforcement learning algorithm: ppo or td3 --control Control configuration: - For bfs: amplitude or ampfreq (amplitude + frequency control) - For cylinder: 2jets or 3jets --submode [Only for test] default rollout or mu (parametric viscosity test, bfs only) --run-name [Only for test] name of the folder in runs/ containing the trained model, placed in bfs/runs or cylinder/runs---
+Arguments: 
+ --case Geometry to simulate: bfs (Backward-Facing Step) or cylinder 
+ --mode Whether to train a new model or test an existing one 
+ --algo Reinforcement learning algorithm: ppo or td3 
+ --control Control configuration: - For bfs: amplitude or ampfreq (amplitude + frequency control) - For cylinder: 2jets or 3jets 
+ --submode [Only for test] default rollout or mu (parametric viscosity test, bfs only) 
+ --run-name [Only for test] name of the folder in runs/ containing the trained model, placed in bfs/runs or cylinder/runs
+ 
    
  ##  Examples 
  Train PPO on BFS with amplitude + frequency control:<pre><code> python3 main.py --case bfs --mode train --algo ppo --control ampfreq </code></pre>
