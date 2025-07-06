@@ -1,0 +1,10 @@
+numpy
+torch
+matplotlib
+pandas
+gymnasium
+argparse
+fenics
+dolfin
+mpi4py
+h5py

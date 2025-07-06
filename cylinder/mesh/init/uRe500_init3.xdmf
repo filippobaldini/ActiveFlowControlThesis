@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<Xdmf Version="3.0">
+  <Domain>
+    <Grid GridType="Collection" CollectionType="Temporal" Name="velocity">
+      <Grid Name="velocity_0" GridType="Uniform">
+        <Topology NumberOfElements="3937" TopologyType="Triangle" NodesPerElement="3">
+          <DataItem Dimensions="3937 3" NumberType="UInt" Format="HDF">uRe500_init3.h5:velocity/velocity_0/mesh/topology</DataItem>
+        </Topology>
+        <Geometry GeometryType="XY">
+          <DataItem Dimensions="2082 2" Format="HDF">uRe500_init3.h5:velocity/velocity_0/mesh/geometry</DataItem>
+        </Geometry>
+        <Time Value="5.990000000000000e+04" />
+        <Attribute ItemType="FiniteElementFunction" ElementFamily="CG" ElementDegree="2" ElementCell="triangle" Name="velocity" Center="Other" AttributeType="Vector">
+          <DataItem Dimensions="47244 1" NumberType="UInt" Format="HDF">uRe500_init3.h5:velocity/velocity_0/cell_dofs</DataItem>
+          <DataItem Dimensions="16202 1" NumberType="Float" Format="HDF">uRe500_init3.h5:velocity/velocity_0/vector</DataItem>
+          <DataItem Dimensions="3938 1" NumberType="UInt" Format="HDF">uRe500_init3.h5:velocity/velocity_0/x_cell_dofs</DataItem>
+          <DataItem Dimensions="3937 1" NumberType="UInt" Format="HDF">uRe500_init3.h5:velocity/velocity_0/cells</DataItem>
+        </Attribute>
+      </Grid>
+    </Grid>
+  </Domain>
+</Xdmf>
