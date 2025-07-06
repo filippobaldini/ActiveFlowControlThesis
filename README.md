@@ -24,21 +24,21 @@ Each can be trained and evaluated in both BFS and cylinder configurations.
 
 ---
 
-## Usage
+# Usage
 
-# 1. Create a virtual environment
+## 1. Create a virtual environment
 <pre><code>python3 -m venv rl_env</code></pre>
 
-# 2. Activate the environment
+## 2. Activate the environment
 <pre><code>source rl_env/bin/activate</code></pre>
 
-# 3. Upgrade pip (recommended)
+## 3. Upgrade pip (recommended)
 <pre><code>pip install --upgrade pip</code></pre>
 
-# 4. Install dependencies
+## 4. Install dependencies
 <pre><code>pip install -r requirements.txt</code></pre>
 
-# 5. How to Run the Project.
+## 5. How to Run the Project.
  All the training and testing routines are launched through a unified entry point: `main.py`. This script dispatches the appropriate training or inspection script based on user-defined command-line arguments.
  <pre><code>python3 main.py --case {bfs|cylinder} --mode {train|test} --algo {ppo|td3} --control {amplitude|ampfreq|2jets|3jets [--submode {default|mu}] [--run-name "run_name"]</code></pre>
   
@@ -52,7 +52,7 @@ Each can be trained and evaluated in both BFS and cylinder configurations.
   
   ---
   
- ## Refernces
+ # Refernces
 
 This project was inspired by and builds upon ideas and structure from the following works:
 
