@@ -49,5 +49,17 @@ Each can be trained and evaluated in both BFS and cylinder configurations.
   Train TD3 on Cylinder with 2 jets: <pre><code>python3 main.py --case cylinder --mode train --algo td3 --control 2jets</code></pre>
    Run rollout inspection (default) for PPO on BFS: <pre><code> python3 main.py --case bfs --mode test --algo ppo --control amplitude --submode default --run-name run_name </code></pre>
   Run parametric test (μ sweep) for TD3 on BFS: <pre><code>python3 main.py --case bfs --mode test --algo td3 --control ampfreq --submode mu --run-name run_name</code></pre>
+  
+  ---
+  
+ ## Refernces
+
+This project was inspired by and builds upon ideas and structure from the following works:
+
+- [Hydrogym](https://github.com/dynamicslab/hydrogym): A modular framework for reinforcement learning and differentiable flow control developed by the Stanford Dynamics Lab.
+- [Cylinder2DFlowControlDRL](https://github.com/jerabaul29/Cylinder2DFlowControlDRL): A comprehensive implementation of DRL-based flow control over a 2D cylinder using FEniCS and PPO, which strongly influenced the control logic and architecture for the cylinder test case.
+
+These repositories were valuable references for designing the RL environments, training pipelines, and evaluation procedures used here.
+
 
 
