@@ -44,14 +44,14 @@ Each can be trained and evaluated in both BFS and cylinder configurations.
   
 ### Arguments:
 
-`--case`  ← Geometry to simulate: bfs (Backward-Facing Step) or cylinder  
-`--mode`  ← Whether to train a new model or test an existing one  
-`--algo`  ← Reinforcement learning algorithm: ppo or td3  
-`--control` ←  
+`--case` : Geometry to simulate: bfs (Backward-Facing Step) or cylinder  
+`--mode` : Whether to train a new model or test an existing one  
+`--algo` : Reinforcement learning algorithm: ppo or td3  
+`--control` :  
   - For bfs: amplitude or ampfreq (amplitude + frequency control)  
   - For cylinder: 2jets or 3jets  
-`--submode` [Only for test] default rollout or mu (parametric viscosity test, bfs only)  
-`--run-name` [Only for test] name of the folder in runs/ containing the trained model  
+`--submode` : [Only for test] default rollout or mu (parametric viscosity test, bfs only)  
+`--run-name` : [Only for test] name of the folder in runs/ containing the trained model  
 
    
  ##  Examples 
