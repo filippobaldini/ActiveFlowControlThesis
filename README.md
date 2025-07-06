@@ -27,23 +27,22 @@ Each can be trained and evaluated in both BFS and cylinder configurations.
 ## Usage
 
 # 1. Create a virtual environment
-python3 -m venv rl_env
+<pre><code>python3 -m venv rl_env</code></pre>
 
 # 2. Activate the environment
-source rl_env/bin/activate  # On Linux/macOS
-# .\rl_env\Scripts\activate  # On Windows
+<pre><code>source rl_env/bin/activate</code></pre>
 
 # 3. Upgrade pip (recommended)
-pip install --upgrade pip
+<pre><code>pip install --upgrade pip</code></pre>
 
 # 4. Install dependencies
-pip install -r requirements.txt
+<pre><code>pip install -r requirements.txt</code></pre>
 
 
-<pre><code>## How to Run the Project.
+## How to Run the Project.
  All the training and testing routines are launched through a unified entry point: `main.py`. This script dispatches the appropriate training or inspection script based on user-defined command-line arguments.
   ### Command Syntax python3 main.py \ --case {bfs|cylinder} \ --mode {train|test} \ --algo {ppo|td3} \ --control {amplitude|ampfreq|2jets|3jets} \ [--submode {default|mu}] \ [--run-name &lt;RunFolderName&gt;] 
   ### Arguments --case Geometry to simulate: bfs (Backward-Facing Step) or cylinder --mode Whether to train a new model or test an existing one --algo Reinforcement learning algorithm: ppo or td3 --control Control configuration: - For bfs: amplitude or ampfreq (amplitude + frequency control) - For cylinder: 2jets or 3jets --submode [Only for test] default rollout or mu (parametric viscosity test, bfs only) --run-name [Only for test] name of the folder in runs/ containing the trained model ---
-   ##  Examples 🔹 Train PPO on BFS with amplitude + frequency control: python3 main.py --case bfs --mode train --algo ppo --control ampfreq 🔹 Train TD3 on Cylinder with 2 jets: python3 main.py --case cylinder --mode train --algo td3 --control 2jets 🔹 Run rollout inspection (default) for PPO on BFS: python3 main.py \ --case bfs \ --mode test \ --algo ppo \ --control amplitude \ --submode default \ --run-name BackwardFacingStep_ppo 🔹 Run parametric test (μ sweep) for TD3 on BFS: python3 main.py \ --case bfs \ --mode test \ --algo td3 \ --control ampfreq \ --submode mu \ --run-name BackwardFacingStep_td3 </code></pre>
+   ##  Examples 🔹 Train PPO on BFS with amplitude + frequency control: python3 main.py --case bfs --mode train --algo ppo --control ampfreq 🔹 Train TD3 on Cylinder with 2 jets: python3 main.py --case cylinder --mode train --algo td3 --control 2jets 🔹 Run rollout inspection (default) for PPO on BFS: python3 main.py \ --case bfs \ --mode test \ --algo ppo \ --control amplitude \ --submode default \ --run-name BackwardFacingStep_ppo 🔹 Run parametric test (μ sweep) for TD3 on BFS: python3 main.py \ --case bfs \ --mode test \ --algo td3 \ --control ampfreq \ --submode mu \ --run-name BackwardFacingStep_td3 
 
 
